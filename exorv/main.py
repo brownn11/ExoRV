@@ -163,8 +163,74 @@ def loadparams(TOI = '', others={}):
             
     return params
 
+def RV_curve(TOI = '', others = {}):
+    '''
+    Plotting phase-folded and signal-subtracted data.
+
+    Args:
+        name: TOI number
+        params: additional planets and their parameters outside of ExoFOP data; leave blank if all planets of interest are already listed in ExoFOP
+    
+    Returns:
+        plotted figures of RV sine curve(s)
+    '''
+    
+    # Load ExoFOP data:
+    params = loadparams(TOI, others)
+    n_p = int((len(params)-1)/3) # number of planets
+
+    fig, axs = plt.subplots(n_p+1,1,figsize=(6,3*n_p))
+    plt_ct = 0
+    rv,K=[],[]
+
+    for ii in range(1,n_p+1):
+        print('\nPlanet %s (%sd):'%(ii,params['P_p'+str(ii)]))
+        
+        # Estimate mass using Forecaster by Chen & Kipping (2016):
+        m, m_plus, m_min = mr.Rstat2M(mean=params['r_p'+str(ii)], std=0.01, unit='Earth', sample_size=1000, grid_size=1e3, classify='Yes')
+        print(f'Planet mass estimated at {m:.2f} +{m_plus:.2f} -{m_min:.2f} Earth mass')
+
+        # Calculate RV amplitude:
+        K.append(28.4 * (m/317.83) * ((365.25/params['P_p'+str(ii)])**(1/3)) * ((params['m_s'])**(-2/3))) # 28.4 [m/s] = 2piG^1/3; 317.83 = MJ/ME; 365.25 = Yr/day
+        print(f'Calculated RV semi-amplitude of {K[-1]:.2f} m s-1')
+
+        # Get RV curve (let e = 0 and w = pi/2):
+        tpi = 2 * np.pi
+        phase = 1
+        Tp = params['t0_p'+str(ii)] - (phase * params['P_p'+str(ii)])  # time of periastron
+        dates = np.linspace(2460000,2460500,10000) # set random date range
+        ma = (tpi/params['P_p'+str(ii)]) * (dates - Tp) # mean anomaly
+        ta = np.arctan(np.tan(ma/2)) * 2 # true anomaly
+        rv.append(K[-1]*np.cos(np.pi/2 + ta)) 
+
+        axs[plt_ct].plot(np.linspace(0,1,10000),K[-1]*np.sin(np.linspace(0,2*np.pi,10000)), label = 'Est. curve', color='k', linewidth=0.7)
+        axs[plt_ct].set_title('Estimated sine curve vs. real data\nPhase folded %s'%(TOI))
+        axs[plt_ct].set_xlabel('Period = %s days' %(params['P_p'+str(ii)]))
+        axs[plt_ct].set_ylabel('RV [m/s]')
+        axs[plt_ct].legend(bbox_to_anchor=(1., 1.05))
+        plt_ct+=1
+
+    #for k in K:
+    #    RVcurve_sum += k*np.sin(dates)
+
+    if n_p>1:
+        axs[-1].plot(dates,np.sum(rv,axis=0), label = 'Est. curve', color='k', linewidth=0.7)
+    else: 
+        axs[-1].plot(dates,rv[0], label = 'Est. curve', color='k', linewidth=0.7) # !!! i am so sure there's a better way to do this ... !!!
+
+    fig.tight_layout()
+    plt.show()
+
+    return K
+
+RV_curve(TOI = 4600, others = {'P_p2' : 480, 'r_p2' : 6.9 ,'t0_p2' : 2459751.6008})
+#RV_curve(TOI = 2094)
+
+
 # Create signal subtracted plots
 # 07/17: this section needs to be updated to be compatible with exoFOP
+# 07/22: below is defunct ... for now. I'll try to separate plotting data points and plotting RV curve into two functions. 
+#        so, build this in a way where we can plot it on top of the RV_curve() results.
 
 def phasefold(TOI = '', others = {},
               instruments = ['MX_R','MX_B'], paths = [],
@@ -299,5 +365,5 @@ def phasefold(TOI = '', others = {},
     fig.tight_layout()
     plt.show()
 
-phasefold(TOI = 2142, others = {'P_p2':38.5, 'r_p2': 2.9, 't0_p2': 2459024.970202545},  order = [2,1],sigsub = True)
+#phasefold(TOI = 2142, others = {'P_p2':38.5, 'r_p2': 2.9, 't0_p2': 2459024.970202545},  order = [2,1],sigsub = True)
                     
