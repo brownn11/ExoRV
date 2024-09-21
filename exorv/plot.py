@@ -126,6 +126,7 @@ def points_only(TOI = '', tn = '',
             rv_list=np.array(rv_csv['rv'].values[:])
             bjd=np.array(rv_csv['bjd'].values[:])
             erv=np.array(rv_csv['e_rv'].values[:])  
+            bjd_range = max(bjd)-min(bjd)
 
             # Add MAROON-X offsets:
             if ('MX' in instruments[c]) and (min(bjd) < 2460313.):
@@ -133,7 +134,7 @@ def points_only(TOI = '', tn = '',
                 
             # Plot all data and expected RV sine curve per instrument:
             axs[plt_ct].errorbar(bjd, rv_list, yerr=erv, fmt='.', color=colors[c], label = 'all data')
-            axs[plt_ct].set_xlim(min(bjd)-10,max(bjd)+10)
+            axs[plt_ct].set_xlim(min(bjd)-0.1*bjd_range,max(bjd)+0.1*bjd_range)
             axs[plt_ct].set_title('All data -- %s -- %s arm'%(tn, instruments[c]))
             plt_ct+=1
     axs[0].legend(bbox_to_anchor=(1., 1.05))
@@ -207,7 +208,8 @@ def RV_plotter(TOI = '', others = {}, tn = '',
             rv_list=np.array(rv_csv['rv'].values[:])
             bjd=np.array(rv_csv['bjd'].values[:])
             erv=np.array(rv_csv['e_rv'].values[:])  
-
+            bjd_range = max(bjd)-min(bjd)
+            
             # Add MAROON-X offsets:
             if ('MX' in instruments[c]) and (min(bjd) < 2460313.):
                 rv_list = l.MX_offsets(rv_list,bjd,c) 
@@ -286,7 +288,7 @@ def RV_plotter(TOI = '', others = {}, tn = '',
                 axs[plt_ct,c].plot(dates,np.sum(rv,axis=0), label = 'Est. curve', color='k', linewidth=0.7)
             else: 
                 axs[plt_ct,c].plot(dates,rv[0], label = 'Est. curve', color='k', linewidth=0.7) 
-            axs[plt_ct,c].set_xlim(min(bjd)-10,max(bjd)+10)
+            axs[plt_ct,c].set_xlim(min(bjd)-0.1*bjd_range,max(bjd)+0.1*bjd_range)
             axs[plt_ct,c].set_title('All data -- %s -- %s arm'%(tn, instruments[c]))
             plt_ct+=1
 
@@ -294,7 +296,7 @@ def RV_plotter(TOI = '', others = {}, tn = '',
             rv_rsd = rv_list - rv_exp_multisig
             axs[plt_ct,c].errorbar(bjd, rv_rsd, yerr=erv, fmt='.', color=colors[c], label = 'all data')
             axs[plt_ct,c].axhline(y=0,c='k')
-            axs[plt_ct,c].set_xlim(min(bjd)-10,max(bjd)+10)
+            axs[plt_ct,c].set_xlim(min(bjd)-0.1*bjd_range,max(bjd)+0.1*bjd_range)
             axs[plt_ct,c].set_title('Residuals -- %s -- %s arm'%(tn, instruments[c]))
             plt_ct+=1
 
