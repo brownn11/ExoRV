@@ -154,6 +154,8 @@ def points_only(TOI = '', tn = '', tn2 = '',
             axs[plt_ct].errorbar(bjd, rv_list, yerr=erv, fmt='.', color=colors[c], label = paths[c])
             axs[plt_ct].set_xlim(min(bjd)-0.1*bjd_range,max(bjd)+0.1*bjd_range)
             axs[plt_ct].set_title('%s -- %s arm'%(tn, instruments[c]))
+            axs[plt_ct].set_ylabel('RV [m/s]')
+            axs[plt_ct].set_xlabel('BJD')
             plt_ct+=1
         if tn2!="": # Check comparison data
             rv_list,bjd,erv=[],[],[]
@@ -178,9 +180,11 @@ def points_only(TOI = '', tn = '', tn2 = '',
             axs[plt_ct2].errorbar(bjd, rv_list, yerr=erv, fmt='.', color=colors2[c], label = paths2[c])
             axs[plt_ct2].set_xlim(min(bjd)-0.1*bjd_range,max(bjd)+0.1*bjd_range)
             axs[plt_ct2].set_title('%s -- %s arm'%(tn, instruments[c]))
+            axs[plt_ct2].set_ylabel('RV [m/s]')
+            axs[plt_ct2].set_xlabel('BJD')
             plt_ct2+=1
-    axs[0].legend(bbox_to_anchor=(1., 1.05))
-    axs[1].legend(bbox_to_anchor=(1., 1.05))
+    # axs[0].legend(bbox_to_anchor=(1., 1.05))
+    # axs[1].legend(bbox_to_anchor=(1., 1.05))
     fig.tight_layout()
     plt.show()
 
@@ -308,7 +312,7 @@ def RV_plotter(TOI = '', others = {}, tn = '',
                 axs[plt_ct,c].errorbar(rx, rv_plot, yerr=erv, fmt=".", color=colors[c], label='all data')
                 axs[plt_ct,c].plot(np.linspace(0,1,10000),K[-1]*np.sin(np.linspace(0,2*np.pi,10000)), label = 'Est. curve', color='k', linewidth=0.7)
                 axs[plt_ct,c].set_title('Phase folded %s; %s %s arm'%(title, tn, instruments[c]))
-                axs[plt_ct,c].set_xlabel('Period = %s days' %(params['P_p'+str(ii)]))
+                axs[plt_ct,c].set_xlabel('Period = %s days' %round(params['P_p'+str(ii)],3))
                 axs[plt_ct,c].set_ylabel('RV [m/s]')
 
                 plt_ct+=1
@@ -337,6 +341,8 @@ def RV_plotter(TOI = '', others = {}, tn = '',
                 axs[plt_ct,c].plot(dates,rv[0], label = 'Est. curve', color='k', linewidth=0.7) 
             axs[plt_ct,c].set_xlim(min(bjd)-0.1*bjd_range,max(bjd)+0.1*bjd_range)
             axs[plt_ct,c].set_title('All data -- %s -- %s arm'%(tn, instruments[c]))
+            axs[plt_ct,c].set_ylabel('RV [m/s]')
+            axs[plt_ct,c].set_xlabel('BJD')
             plt_ct+=1
 
             # Plot residuals per instrument: 
@@ -345,6 +351,8 @@ def RV_plotter(TOI = '', others = {}, tn = '',
             axs[plt_ct,c].axhline(y=0,c='k')
             axs[plt_ct,c].set_xlim(min(bjd)-0.1*bjd_range,max(bjd)+0.1*bjd_range)
             axs[plt_ct,c].set_title('Residuals -- %s -- %s arm'%(tn, instruments[c]))
+            axs[plt_ct,c].set_ylabel('[m/s]')
+            axs[plt_ct,c].set_xlabel('BJD')
 
             sq_sum = np.sum([ii*ii for ii in rv_rsd])
             rms = np.sqrt(sq_sum/len(rv_rsd))
@@ -352,6 +360,5 @@ def RV_plotter(TOI = '', others = {}, tn = '',
             axs[plt_ct,c].text(max(bjd)-0.1*bjd_range,min(rv_rsd),'RMS = %s'%round(rms,2), bbox=dict(facecolor='white', edgecolor='lightgrey'))
             plt_ct+=1
 
-    axs[0,c].legend(bbox_to_anchor=(1., 1.05))
     fig.tight_layout()
     plt.show()
