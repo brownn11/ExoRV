@@ -126,7 +126,7 @@ def loadparams(TOI = '', others={}):
     params = {}
     
     # Load ExoFOP data if available
-    if TOI != '': 
+    if TOI != 0: 
         print('TOI not empty, loading in ExoFOP data...')
         exofop_table=pd.read_csv('https://exofop.ipac.caltech.edu/tess/download_toi.php?sort=toi&output=pipe', delimiter='|',index_col=1)
         n = 1
@@ -150,7 +150,7 @@ def loadparams(TOI = '', others={}):
         print('Using user-uploaded parameters...')
 
         for param_others in others:
-            params[param_others] = int(others[param_others])
+            params[param_others] = float(others[param_others])
         
         # Count up number of planets:
         n = 0
@@ -172,9 +172,10 @@ def loadparams(TOI = '', others={}):
         print("Missing parameter in dictionary 'params'. Requires: P [d], epoch [BJD], r [r_E] OR m [m_E], and m_s [m_S]. \n Please review:",params)
         sys.exit()
             
+    print('Usings params:',params)
     return params
 
-def loaddata(TOI = '', tn = '', servalfolder = ''):
+def loaddata_mx(TOI = '', tn = '', servalfolder = ''):
     # set tn if TOI target is used -- simplifies things a bit:
     if tn == '' and TOI != '':
         tn = 'TOI-'+str(TOI)
@@ -190,3 +191,11 @@ def loaddata(TOI = '', tn = '', servalfolder = ''):
         remotefile_b = '/home/maroonx/serval3/'+servalfolder+'/'+tn+'/MAROONXbluecoadd/'+tn+'_rv_unbin.csv'
     os.system('scp "%s:%s" "%s"' % (remotehost, remotefile_r, localfile_r) )
     os.system('scp "%s:%s" "%s"' % (remotehost, remotefile_b, localfile_b) )
+
+def loaddata(path = ''):
+    # set tn if TOI target is used -- simplifies things a bit:
+
+    remotehost = input('Remote host: ')
+    localfile = './'+path.split('/')[-1]
+
+    os.system('scp "%s:%s" "%s"' % (remotehost, path, localfile) )
