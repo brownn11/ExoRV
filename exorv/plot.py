@@ -12,6 +12,8 @@ import os
 
 import load as l
 colors = ['tab:blue','tab:red']
+colors2 = ['deepskyblue','coral']
+
 
 def curve_only(TOI = '', others = {}):
     '''
@@ -75,8 +77,8 @@ def curve_only(TOI = '', others = {}):
 
     return K
 
-def points_only(TOI = '', tn = '',
-              path = '', scp_MX = False):
+def points_only(TOI = '', tn = '', tn2 = '',
+              path = '', name = '', offsets = False):
     '''
     Plotting RV data points. Does not plot RV expected curve.
 
@@ -97,18 +99,33 @@ def points_only(TOI = '', tn = '',
     
     # Initialize a plot counter
     plt_ct = 0
+    plt_ct2 = 0
 
     # set tn if TOI target is used -- simplifies things a bit:
     if tn == '' and TOI != '':
         tn = 'TOI-'+str(TOI)
 
     # Find matching files in specified path:
-    paths = glob.glob(path+'*'+str(tn)+'*.csv')
+    if len(name)==0:
+        paths = glob.glob(path+'*'+str(tn)+'_?.csv')
+    else:
+        paths = list(name.split(', '))
+        for __ in range(len(paths)):
+            paths[__] = path + paths[__]
     if len(paths)==0:
         print('Error: path empty, check target name or file location\n---> Attempted path:',path,'*',str(tn),'*.csv')
 
+    # Find comparison points, if used:
+    if tn2!="":
+        paths2 = glob.glob(path+'*'+str(tn2)+'_?.csv')
+        paths2.sort()
+        if len(paths2)==0:
+            print('Error: path empty, check target name or file location\n---> Attempted path:',path,'*',str(tn),'*.csv')
+
     paths.sort()
     print('Using files:',paths)
+    if tn2!="":
+        print('Using comparison files:',paths2) 
 
     # Initialize plot:
     fig, axs = plt.subplots(len(instruments),1,figsize=(8,3*len(instruments)))
@@ -129,22 +146,47 @@ def points_only(TOI = '', tn = '',
             bjd_range = max(bjd)-min(bjd)
 
             # Add MAROON-X offsets:
-            if ('MX' in instruments[c]) and (min(bjd) < 2460313.):
-                rv_list = l.MX_offsets(rv_list,bjd,c) 
+            if offsets:
+                if ('MX' in instruments[c]) and (min(bjd) < 2460313.):
+                    rv_list = l.MX_offsets(rv_list,bjd,c) 
+                    
+            #Plot all data and expected RV sine curve per instrument:
+            axs[plt_ct].errorbar(bjd, rv_list, yerr=erv, fmt='.', color=colors[c], label = paths[c])
+            axs[plt_ct].set_xlim(min(bjd)-0.1*bjd_range,max(bjd)+0.1*bjd_range)
+            axs[plt_ct].set_title('%s -- %s arm'%(tn, instruments[c]))
+            plt_ct+=1
+        if tn2!="": # Check comparison data
+            rv_list,bjd,erv=[],[],[]
+            p = str(paths2[c])  
+
+            # Read in data: 
+            if c<2:
+                rv_csv=pd.read_csv(p)
+            else:
+                rv_csv=pd.read_csv(p,sep=' ',header=None, names=['bjd','rv','e_rv'], usecols=[0,1,2])
+            rv_list=np.array(rv_csv['rv'].values[:])
+            bjd=np.array(rv_csv['bjd'].values[:])
+            erv=np.array(rv_csv['e_rv'].values[:])  
+            bjd_range = max(bjd)-min(bjd)
+
+            # Add MAROON-X offsets:
+            if offsets:
+                if ('MX' in instruments[c]) and (min(bjd) < 2460313.):
+                    rv_list = l.MX_offsets(rv_list,bjd,c) 
                 
             # Plot all data and expected RV sine curve per instrument:
-            axs[plt_ct].errorbar(bjd, rv_list, yerr=erv, fmt='.', color=colors[c], label = 'all data')
-            axs[plt_ct].set_xlim(min(bjd)-0.1*bjd_range,max(bjd)+0.1*bjd_range)
-            axs[plt_ct].set_title('All data -- %s -- %s arm'%(tn, instruments[c]))
-            plt_ct+=1
+            axs[plt_ct2].errorbar(bjd, rv_list, yerr=erv, fmt='.', color=colors2[c], label = paths2[c])
+            axs[plt_ct2].set_xlim(min(bjd)-0.1*bjd_range,max(bjd)+0.1*bjd_range)
+            axs[plt_ct2].set_title('%s -- %s arm'%(tn, instruments[c]))
+            plt_ct2+=1
     axs[0].legend(bbox_to_anchor=(1., 1.05))
+    axs[1].legend(bbox_to_anchor=(1., 1.05))
     fig.tight_layout()
     plt.show()
 
 def RV_plotter(TOI = '', others = {}, tn = '',
-              path = '',
-              order = [], sigsub = False, 
-              scp_download = False, scp_MX = False):
+              path = '', name = '',
+              order = [], sigsub = True, offsets = False):
     '''
     Plots phase-folded and signal-subtracted data. Uses both RV data points and expected curve.
 
@@ -175,7 +217,13 @@ def RV_plotter(TOI = '', others = {}, tn = '',
         tn = 'TOI-'+str(TOI)
     
     # Find matching files in specified path:
-    paths = glob.glob(path+'*'+str(tn)+'*.csv')
+    if len(name)==0:
+        paths = glob.glob(path+'*'+str(tn)+'_?.csv')
+    else:
+        paths = list(name.split(', '))
+        for __ in range(len(paths)):
+            paths[__] = path + paths[__]
+
     if len(paths)==0:
         print('Error: path empty, check target name or file location\n---> Attempted path:',path,'*',str(tn),'*.csv')
         exit
@@ -211,8 +259,9 @@ def RV_plotter(TOI = '', others = {}, tn = '',
             bjd_range = max(bjd)-min(bjd)
             
             # Add MAROON-X offsets:
-            if ('MX' in instruments[c]) and (min(bjd) < 2460313.):
-                rv_list = l.MX_offsets(rv_list,bjd,c) 
+            if offsets:
+                if ('MX' in instruments[c]) and (min(bjd) < 2460313.):
+                    rv_list = l.MX_offsets(rv_list,bjd,c) 
 
             # Initialize dummy arrays for signal subtraction:
             if sigsub == True:
@@ -256,7 +305,6 @@ def RV_plotter(TOI = '', others = {}, tn = '',
                     rv_plot = rv_list
                     title = ''
 
-                print(plt_ct,c)
                 axs[plt_ct,c].errorbar(rx, rv_plot, yerr=erv, fmt=".", color=colors[c], label='all data')
                 axs[plt_ct,c].plot(np.linspace(0,1,10000),K[-1]*np.sin(np.linspace(0,2*np.pi,10000)), label = 'Est. curve', color='k', linewidth=0.7)
                 axs[plt_ct,c].set_title('Phase folded %s; %s %s arm'%(title, tn, instruments[c]))
@@ -273,7 +321,6 @@ def RV_plotter(TOI = '', others = {}, tn = '',
                     ta = np.arctan(np.tan(ma/2)) * 2 # true anomaly
                     rv_exp_onesig = (K[-1]*np.cos(np.pi/2 + ta)) #.append(K[-1]*np.cos(np.pi/2 + ta))
                     rv_exp_multisig += rv_exp_onesig
-                    print(rv_exp_multisig)
 
                     rv_sub = rv_list - rv_exp_onesig
                 else:
@@ -298,6 +345,11 @@ def RV_plotter(TOI = '', others = {}, tn = '',
             axs[plt_ct,c].axhline(y=0,c='k')
             axs[plt_ct,c].set_xlim(min(bjd)-0.1*bjd_range,max(bjd)+0.1*bjd_range)
             axs[plt_ct,c].set_title('Residuals -- %s -- %s arm'%(tn, instruments[c]))
+
+            sq_sum = np.sum([ii*ii for ii in rv_rsd])
+            rms = np.sqrt(sq_sum/len(rv_rsd))
+
+            axs[plt_ct,c].text(max(bjd)-0.1*bjd_range,min(rv_rsd),'RMS = %s'%round(rms,2), bbox=dict(facecolor='white', edgecolor='lightgrey'))
             plt_ct+=1
 
     axs[0,c].legend(bbox_to_anchor=(1., 1.05))
