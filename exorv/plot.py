@@ -4,6 +4,8 @@ import sys
 import pandas as pd
 from pathlib import Path
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+from matplotlib.colors import Normalize
 from forecaster import forecaster3 as mr
 import glob
 plt.rcParams['lines.linewidth']=0.4
@@ -12,6 +14,7 @@ import os
 
 import load as l
 colors = ['tab:blue','tab:red']
+cmaps = ['winter','autumn']
 colors2 = ['deepskyblue','coral']
 
 
@@ -77,7 +80,7 @@ def curve_only(TOI = '', others = {}):
 
     return K
 
-def points_only(TOI = '', tn = '', tn2 = '',
+def points_only(TOI = '', tn = '', tn_adtl = '',
               path = '', name = '', offsets = False):
     '''
     Plotting RV data points. Does not plot RV expected curve.
@@ -97,43 +100,54 @@ def points_only(TOI = '', tn = '', tn2 = '',
 
     instruments = ['MX_B','MX_R']
     
-    # Initialize a plot counter
-    plt_ct = 0
-    plt_ct2 = 0
-
     # set tn if TOI target is used -- simplifies things a bit:
     if tn == '' and TOI != '':
         tn = 'TOI-'+str(TOI)
 
-    # Find matching files in specified path:
-    if len(name)==0:
-        paths = glob.glob(path+'*'+str(tn)+'_?.csv')
-    else:
-        paths = list(name.split(', '))
-        for __ in range(len(paths)):
-            paths[__] = path + paths[__]
-    if len(paths)==0:
-        print('Error: path empty, check target name or file location\n---> Attempted path:',path,'*',str(tn),'*.csv')
+    # Create list of all file basenames:
+    filenames = []
+    if tn_adtl!='': # Add any additional datasets for comparison plots
+        filenames = [tn]
+        if ', ' in tn_adtl: # Looks for multiple additional datasets
+            tn_adtl = tn_adtl.split(', ')
+            for _ in tn_adtl: 
+                filenames.append(_)
+        else: # Used if there's only one additional dataset
+            filenames.append(tn_adtl)
+    else: # Used for only one dataset
+        filenames = [tn]
 
-    # Find comparison points, if used:
-    if tn2!="":
-        paths2 = glob.glob(path+'*'+str(tn2)+'_?.csv')
-        paths2.sort()
-        if len(paths2)==0:
+    # Create list of exact filenames:
+    paths = []
+    for nn in filenames:
+        if len(name)==0:
+            paths.append(glob.glob(path+'*'+str(nn)+'_r.csv')[0])
+            paths.append(glob.glob(path+'*'+str(nn)+'_b.csv')[0])
+        else:
+            paths.append(list(name.split(', ')))
+            for __ in range(len(paths)):
+                paths[__] = path + paths[__]
+        if len(paths)==0:
             print('Error: path empty, check target name or file location\n---> Attempted path:',path,'*',str(tn),'*.csv')
 
+    # Sort alphabetically:
     paths.sort()
     print('Using files:',paths)
-    if tn2!="":
-        print('Using comparison files:',paths2) 
 
     # Initialize plot:
     fig, axs = plt.subplots(len(instruments),1,figsize=(8,3*len(instruments)))
 
-    for c in range(len(instruments)): # Iterate over instruments:
-        if list(paths[c]): # Confirm path exists:
+    bjd_all = []
+    for ff in range(len(paths)): # Loop over each dataset
+        if list(paths[ff]): # Confirm path exists
             rv_list,bjd,erv=[],[],[]
-            p = str(paths[c])  
+            p = str(paths[ff])  
+
+            #color 
+            if ff%2==0:
+                c = 0
+            else:
+                c = 1
 
             # Read in data: 
             if c<2:
@@ -142,53 +156,36 @@ def points_only(TOI = '', tn = '', tn2 = '',
                 rv_csv=pd.read_csv(p,sep=' ',header=None, names=['bjd','rv','e_rv'], usecols=[0,1,2])
             rv_list=np.array(rv_csv['rv'].values[:])
             bjd=np.array(rv_csv['bjd'].values[:])
+            bjd_all = np.concatenate([bjd_all, bjd])
             erv=np.array(rv_csv['e_rv'].values[:])  
-            bjd_range = max(bjd)-min(bjd)
 
             # Add MAROON-X offsets:
             if offsets:
                 if ('MX' in instruments[c]) and (min(bjd) < 2460313.):
                     rv_list = l.MX_offsets(rv_list,bjd,c) 
+
+            # Create cmap, normalized to number of datasets plotted:
+            if c==0:
+                cmap = cm.viridis
+            else:
+                cmap = cm.inferno
+            norm = Normalize(vmin=-1, vmax=len(paths)+1)
                     
-            #Plot all data and expected RV sine curve per instrument:
-            axs[plt_ct].errorbar(bjd, rv_list, yerr=erv, fmt='.', color=colors[c], label = paths[c])
-            axs[plt_ct].set_xlim(min(bjd)-0.1*bjd_range,max(bjd)+0.1*bjd_range)
-            axs[plt_ct].set_title('%s -- %s arm'%(tn, instruments[c]))
-            axs[plt_ct].set_ylabel('RV [m/s]')
-            axs[plt_ct].set_xlabel('BJD')
-            plt_ct+=1
-        if tn2!="": # Check comparison data
-            rv_list,bjd,erv=[],[],[]
-            p = str(paths2[c])  
+            #Plot all data per instrument:
+            axs[c].errorbar(bjd, rv_list, yerr=erv, fmt='.', label = paths[ff], c = cmap(norm(ff)), ecolor=cmap(norm(ff))) 
+            axs[c].set_title('%s -- %s arm'%(tn, instruments[c]))
+            axs[c].set_ylabel('RV [m/s]')
+            axs[c].set_xlabel('BJD')
+    bjd_range = max(bjd_all)-min(bjd_all)
+    for cc in [0,1]:
+        axs[cc].set_xlim(min(bjd_all)-0.1*bjd_range,max(bjd_all)+0.1*bjd_range)   
 
-            # Read in data: 
-            if c<2:
-                rv_csv=pd.read_csv(p)
-            else:
-                rv_csv=pd.read_csv(p,sep=' ',header=None, names=['bjd','rv','e_rv'], usecols=[0,1,2])
-            rv_list=np.array(rv_csv['rv'].values[:])
-            bjd=np.array(rv_csv['bjd'].values[:])
-            erv=np.array(rv_csv['e_rv'].values[:])  
-            bjd_range = max(bjd)-min(bjd)
-
-            # Add MAROON-X offsets:
-            if offsets:
-                if ('MX' in instruments[c]) and (min(bjd) < 2460313.):
-                    rv_list = l.MX_offsets(rv_list,bjd,c) 
-                
-            # Plot all data and expected RV sine curve per instrument:
-            axs[plt_ct2].errorbar(bjd, rv_list, yerr=erv, fmt='.', color=colors2[c], label = paths2[c])
-            axs[plt_ct2].set_xlim(min(bjd)-0.1*bjd_range,max(bjd)+0.1*bjd_range)
-            axs[plt_ct2].set_title('%s -- %s arm'%(tn, instruments[c]))
-            axs[plt_ct2].set_ylabel('RV [m/s]')
-            axs[plt_ct2].set_xlabel('BJD')
-            plt_ct2+=1
-    # axs[0].legend(bbox_to_anchor=(1., 1.05))
-    # axs[1].legend(bbox_to_anchor=(1., 1.05))
+    axs[0].legend(loc = 'upper right', fontsize = 6)
+    axs[1].legend(loc = 'upper right', fontsize = 6)
     fig.tight_layout()
     plt.show()
 
-def RV_plotter(TOI = '', others = {}, tn = '',
+def RV_plotter(TOI = '', others = {}, tn = '', tn_adtl ='',
               path = '', name = '',
               order = [], sigsub = True, offsets = False):
     '''
@@ -214,23 +211,36 @@ def RV_plotter(TOI = '', others = {}, tn = '',
 
     # Initialize a plot counter
     plt_ct = 0
-    residuals = []
 
     # set tn if TOI target is used -- simplifies things a bit:
     if tn == '' and TOI != '':
         tn = 'TOI-'+str(TOI)
     
-    # Find matching files in specified path:
-    if len(name)==0:
-        paths = glob.glob(path+'*'+str(tn)+'_?.csv')
-    else:
-        paths = list(name.split(', '))
-        for __ in range(len(paths)):
-            paths[__] = path + paths[__]
+    # Create list of all file basenames:
+    filenames = []
+    if tn_adtl!='': # Add any additional datasets for comparison plots
+        filenames = [tn]
+        if ', ' in tn_adtl: # Looks for multiple additional datasets
+            tn_adtl = tn_adtl.split(', ')
+            for _ in tn_adtl: 
+                filenames.append(_)
+        else: # Used if there's only one additional dataset
+            filenames.append(tn_adtl)
+    else: # Used for only one dataset
+        filenames = [tn]
 
-    if len(paths)==0:
-        print('Error: path empty, check target name or file location\n---> Attempted path:',path,'*',str(tn),'*.csv')
-        exit
+    # Create list of exact filenames:
+    paths = []
+    for nn in filenames:
+        if len(name)==0:
+            paths.append(glob.glob(path+'*'+str(nn)+'_r.csv')[0])
+            paths.append(glob.glob(path+'*'+str(nn)+'_b.csv')[0])
+        else:
+            paths.append(list(name.split(', ')))
+            for __ in range(len(paths)):
+                paths[__] = path + paths[__]
+        if len(paths)==0:
+            print('Error: path empty, check target name or file location\n---> Attempted path:',path,'*',str(tn),'*.csv')
     
     paths.sort()
     print('Using files:',paths)
@@ -246,11 +256,35 @@ def RV_plotter(TOI = '', others = {}, tn = '',
     # Initialize plot:
     fig, axs = plt.subplots(n_p+2,len(instruments),figsize=(10,6*n_p))
 
-    for c in range(len(instruments)): # Iterate over instruments:
-        if list(paths[c]): # Confirm path exists:
-            rv_list,bjd,erv,rv,K,ct=[],[],[],[],[],[]
-            p = str(paths[c])  
+    K = np.zeros(len(order))
+    for ii in order: # Get K and expected planet mass for each planet -- 
+        print('\nPlanet %s (%sd):'%(ii,params['P_p'+str(ii)]))
+        
+        try:
+            m = params['m_p'+str(ii)]
+        except:
+            # Estimate mass using Forecaster by Chen & Kipping (2016):
+            m, m_plus, m_min = mr.Rstat2M(mean=params['r_p'+str(ii)], std=0.01, unit='Earth', sample_size=1000, grid_size=1e3, classify='Yes')
+            print(f'Planet mass estimated at {m:.2f} +{m_plus:.2f} -{m_min:.2f} Earth mass')
+
+        # Calculate RV amplitude:
+        K[ii-1] = (28.4 * (m/317.83) * ((365.25/params['P_p'+str(ii)])**(1/3)) * ((params['m_s'])**(-2/3))) # 28.4 [m/s] = 2piG^1/3; 317.83 = MJ/ME; 365.25 = Yr/day
+        print(f'Calculated RV semi-amplitude of {K[-1]:.2f} m s-1')
+
+    bjd_all = [] # compile ALL bjd dates to find absolute minimum and maximum of all datasets
+
+    for ff in range(len(paths)): # Loop over each dataset
+        if list(paths[ff]): # Confirm path exists
+
+            rv_list,bjd,erv,rv,ct=[],[],[],[],[]
+            p = str(paths[ff])  
             plt_ct = 0 # reset plot counter
+
+            #color 
+            if ff%2==0:
+                c = 0
+            else:
+                c = 1
 
             # Read in data: 
             if c<2:
@@ -259,8 +293,8 @@ def RV_plotter(TOI = '', others = {}, tn = '',
                 rv_csv=pd.read_csv(p,sep=' ',header=None, names=['bjd','rv','e_rv'], usecols=[0,1,2])
             rv_list=np.array(rv_csv['rv'].values[:])
             bjd=np.array(rv_csv['bjd'].values[:])
+            bjd_all = np.concatenate([bjd_all,bjd])
             erv=np.array(rv_csv['e_rv'].values[:])  
-            bjd_range = max(bjd)-min(bjd)
             
             # Add MAROON-X offsets:
             if offsets:
@@ -270,23 +304,10 @@ def RV_plotter(TOI = '', others = {}, tn = '',
             # Initialize dummy arrays for signal subtraction:
             if sigsub == True:
                 rv_sub = rv_list
-                rv_exp_sum = np.zeros(len(rv_list))
 
             rv_exp_multisig = 0 # expected RV, does not reset per signal
             for ii in order: # Iterate over expected planets:
                 rv_exp_onesig = [] # expected RV, resets per signal
-                print('\nPlanet %s (%sd)(%s):'%(ii,params['P_p'+str(ii)],instruments[c]))
-                
-                try:
-                    m = params['m_p'+str(ii)]
-                except:
-                    # Estimate mass using Forecaster by Chen & Kipping (2016):
-                    m, m_plus, m_min = mr.Rstat2M(mean=params['r_p'+str(ii)], std=0.01, unit='Earth', sample_size=1000, grid_size=1e3, classify='Yes')
-                    print(f'Planet mass estimated at {m:.2f} +{m_plus:.2f} -{m_min:.2f} Earth mass')
-
-                # Calculate RV amplitude:
-                K.append(28.4 * (m/317.83) * ((365.25/params['P_p'+str(ii)])**(1/3)) * ((params['m_s'])**(-2/3))) # 28.4 [m/s] = 2piG^1/3; 317.83 = MJ/ME; 365.25 = Yr/day
-                print(f'Calculated RV semi-amplitude of {K[-1]:.2f} m s-1')
 
                 # Get RV curve (let e = 0 and w = pi/2):
                 tpi = 2 * np.pi
@@ -295,7 +316,7 @@ def RV_plotter(TOI = '', others = {}, tn = '',
                 dates = np.linspace(min(bjd)-100,max(bjd)+100,10000) # set desired date range
                 ma = (tpi/params['P_p'+str(ii)]) * (dates - Tp) # mean anomaly
                 ta = np.arctan(np.tan(ma/2)) * 2 # true anomaly
-                rv.append(K[-1]*np.cos(np.pi/2 + ta))
+                rv.append(K[ii-1]*np.cos(np.pi/2 + ta)) # expected rv signal
 
                 # Plot data per planet as phase-fold:
                 rx = ((params['t0_p'+str(ii)]-bjd)/params['P_p'+str(ii)])%1 
@@ -309,9 +330,16 @@ def RV_plotter(TOI = '', others = {}, tn = '',
                     rv_plot = rv_list
                     title = ''
 
-                axs[plt_ct,c].errorbar(rx, rv_plot, yerr=erv, fmt=".", color=colors[c], label='all data')
-                axs[plt_ct,c].plot(np.linspace(0,1,10000),K[-1]*np.sin(np.linspace(0,2*np.pi,10000)), label = 'Est. curve', color='k', linewidth=0.7)
-                axs[plt_ct,c].set_title('Phase folded %s; %s %s arm'%(title, tn, instruments[c]))
+                # Create cmap, normalized to number of datasets plotted:
+                if c==0:
+                    cmap = cm.viridis
+                else:
+                    cmap = cm.inferno
+                norm = Normalize(vmin=-1, vmax=len(paths)+1)
+
+                axs[plt_ct,c].errorbar(rx, rv_plot, yerr=erv, fmt=".", c = cmap(norm(ff)), ecolor=cmap(norm(ff)), label = paths[ff][:-6])
+                axs[plt_ct,c].plot(np.linspace(0,1,10000),K[ii-1]*np.sin(np.linspace(0,2*np.pi,10000)), color='k', linewidth=0.7)
+                axs[plt_ct,c].set_title('Phase folded %s;\n %s arm'%(title, instruments[c]))
                 axs[plt_ct,c].set_xlabel('Period = %s days' %round(params['P_p'+str(ii)],3))
                 axs[plt_ct,c].set_ylabel('RV [m/s]')
 
@@ -320,45 +348,50 @@ def RV_plotter(TOI = '', others = {}, tn = '',
 
                 if sigsub == True:
                     # Signal subtract: 
-                    #for jj in range(len(rv_list)):
                     ma = (tpi/params['P_p'+str(ii)]) * (bjd - Tp) 
                     ta = np.arctan(np.tan(ma/2)) * 2 # true anomaly
-                    rv_exp_onesig = (K[-1]*np.cos(np.pi/2 + ta)) #.append(K[-1]*np.cos(np.pi/2 + ta))
+                    rv_exp_onesig = (K[ii-1]*np.cos(np.pi/2 + ta)) 
                     rv_exp_multisig += rv_exp_onesig
 
                     rv_sub = rv_list - rv_exp_onesig
+
                 else:
                     # Still get residuals:
                     ma = (tpi/params['P_p'+str(ii)]) * (bjd - Tp) 
                     ta = np.arctan(np.tan(ma/2)) * 2 # true anomaly
-                    rv_exp_multisig += (K[-1]*np.cos(np.pi/2 + ta))
+                    rv_exp_multisig += (K[ii-1]*np.cos(np.pi/2 + ta))
                 
             # Plot all data and expected RV sine curve per instrument:
-            axs[plt_ct,c].errorbar(bjd, rv_list, yerr=erv, fmt='.', color=colors[c], label = 'all data')
+            axs[plt_ct,c].errorbar(bjd, rv_list, yerr=erv, fmt='.',c = cmap(norm(ff)), ecolor=cmap(norm(ff)))
             if n_p>1:
-                axs[plt_ct,c].plot(dates,np.sum(rv,axis=0), label = 'Est. curve', color='k', linewidth=0.7)
+                axs[plt_ct,c].plot(dates,np.sum(rv,axis=0), color='k', linewidth=0.7)
             else: 
-                axs[plt_ct,c].plot(dates,rv[0], label = 'Est. curve', color='k', linewidth=0.7) 
-            axs[plt_ct,c].set_xlim(min(bjd)-0.1*bjd_range,max(bjd)+0.1*bjd_range)
-            axs[plt_ct,c].set_title('All data -- %s -- %s arm'%(tn, instruments[c]))
+                axs[plt_ct,c].plot(dates,rv[0], color='k', linewidth=0.7) 
+            axs[plt_ct,c].set_title('All data -- %s arm'%(instruments[c]))
             axs[plt_ct,c].set_ylabel('RV [m/s]')
             axs[plt_ct,c].set_xlabel('BJD')
             plt_ct+=1
 
             # Plot residuals per instrument: 
             rv_rsd = rv_list - rv_exp_multisig
-            axs[plt_ct,c].errorbar(bjd, rv_rsd, yerr=erv, fmt='.', color=colors[c], label = 'all data')
+            sq_sum = np.sum([ii*ii for ii in rv_rsd])
+            rms = np.sqrt(sq_sum/len(rv_rsd))
+            axs[plt_ct,c].errorbar(bjd, rv_rsd, yerr=erv, fmt='.', c = cmap(norm(ff)), ecolor=cmap(norm(ff)), label = 'RMS = %s'%round(rms,2))
             axs[plt_ct,c].axhline(y=0,c='k')
-            axs[plt_ct,c].set_xlim(min(bjd)-0.1*bjd_range,max(bjd)+0.1*bjd_range)
-            axs[plt_ct,c].set_title('Residuals -- %s -- %s arm'%(tn, instruments[c]))
+            axs[plt_ct,c].set_title('Residuals-- %s arm'%(instruments[c]))
             axs[plt_ct,c].set_ylabel('[m/s]')
             axs[plt_ct,c].set_xlabel('BJD')
 
-            sq_sum = np.sum([ii*ii for ii in rv_rsd])
-            rms = np.sqrt(sq_sum/len(rv_rsd))
-
-            axs[plt_ct,c].text(max(bjd)-0.1*bjd_range,min(rv_rsd),'RMS = %s'%round(rms,2), bbox=dict(facecolor='white', edgecolor='lightgrey'))
             plt_ct+=1
 
+    bjd_range = max(bjd_all)-min(bjd_all)
+    for ii in order:
+        for cc in [0,1]:
+            axs[ii,cc].set_xlim(min(bjd_all)-0.1*bjd_range,max(bjd_all)+0.1*bjd_range)   
+
+    axs[0,0].legend(loc = 'upper right', fontsize=6)
+    axs[0,1].legend(loc = 'upper right', fontsize=6)
+    axs[-1,0].legend(loc = 'upper right', fontsize=6)
+    axs[-1,1].legend(loc = 'upper right', fontsize=6)
     fig.tight_layout()
     plt.show()
