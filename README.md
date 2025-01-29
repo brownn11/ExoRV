@@ -1,6 +1,6 @@
 # ExoRV
 
-Plot (1) RV data on its own, (2) against an expected RV curve, or (3) only the RV curve.
+## Plot (1) RV data on its own, (2) against an expected RV curve, or (3) only the RV curve.
 
 --> Easily download planet parameters from ExoFOP
 
@@ -12,7 +12,7 @@ Plot (1) RV data on its own, (2) against an expected RV curve, or (3) only the R
 
 
 
-Future fixes:
+## Future fixes:
 
 --> Is poorly adapted for non-MAROON-X data
 
@@ -20,11 +20,13 @@ Future fixes:
 
 -->--> general scp only downloads one folder at a time
 
-Example:
+## Example:
 
 I reduced some Gl 486 data with different calibration files, and wanted to compare the results. I called: 
 
-<python main_maroonx.py -TOI 1827 -p 'tutorial/' -tn 'Gl 486_set1' --compare 'Gl 486_set2, Gl 486_set3'>
+```
+python main_maroonx.py -TOI 1827 -p 'tutorial/' -tn 'Gl 486_set1' --compare 'Gl 486_set2, Gl 486_set3'
+```
 
 And got the following plot:
 
