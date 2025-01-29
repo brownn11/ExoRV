@@ -38,8 +38,8 @@ elif args.scp_download:
     l.loaddata(path = path)
 
 if args.points_only:
-    p.points_only(tn =  args.target_name, tn2 = args.compare, TOI = args.TOI, path = args.local_path, name = args.file_name, offsets = args.offsets)
+    p.points_only(tn =  args.target_name, tn_adtl = args.compare, TOI = args.TOI, path = args.local_path, name = args.file_name, offsets = args.offsets)
 elif args.curve_only:
     p.curve_only(TOI = args.TOI, others = args.others)
 else:
-    p.RV_plotter(tn =  args.target_name, TOI = args.TOI, others = args.others, path = args.local_path, name = args.file_name, offsets = args.offsets)
+    p.RV_plotter(tn =  args.target_name, tn_adtl = args.compare, TOI = args.TOI, others = args.others, path = args.local_path, name = args.file_name, offsets = args.offsets)
