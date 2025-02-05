@@ -323,9 +323,11 @@ def RV_plotter(TOI = '', others = {}, tn = '', tn_adtl ='',
                 
                 if sigsub == True:
                     rv_plot = rv_sub
-                    Ps = [params['P_p'+str(cc)] for cc in ct]
-                    title = '+ subtracted %sd signal(s)'%(Ps)
-                    for cc in ct : print(params['P_p'+str(cc)]) 
+                    Ps = [round(params['P_p'+str(cc)],2) for cc in ct]
+                    if plt_ct >= 1:
+                        title = '+ subtracted %sd signal(s)'%Ps
+                    else:
+                        title = ''
                 else:
                     rv_plot = rv_list
                     title = ''
@@ -362,6 +364,7 @@ def RV_plotter(TOI = '', others = {}, tn = '', tn_adtl ='',
                     rv_exp_multisig += (K[ii-1]*np.cos(np.pi/2 + ta))
                 
             # Plot all data and expected RV sine curve per instrument:
+            
             axs[plt_ct,c].errorbar(bjd, rv_list, yerr=erv, fmt='.',c = cmap(norm(ff)), ecolor=cmap(norm(ff)))
             if n_p>1:
                 axs[plt_ct,c].plot(dates,np.sum(rv,axis=0), color='k', linewidth=0.7)
@@ -385,9 +388,9 @@ def RV_plotter(TOI = '', others = {}, tn = '', tn_adtl ='',
             plt_ct+=1
 
     bjd_range = max(bjd_all)-min(bjd_all)
-    for ii in order:
-        for cc in [0,1]:
-            axs[ii,cc].set_xlim(min(bjd_all)-0.1*bjd_range,max(bjd_all)+0.1*bjd_range)   
+    for cc in [0,1]:
+        print(ii,cc)
+        axs[-2,cc].set_xlim(min(bjd_all)-0.1*bjd_range,max(bjd_all)+0.1*bjd_range)   
 
     axs[0,0].legend(loc = 'upper right', fontsize=6)
     axs[0,1].legend(loc = 'upper right', fontsize=6)
