@@ -80,8 +80,8 @@ def curve_only(TOI = '', others = {}):
 
     return K
 
-def points_only(TOI = '', tn = '', tn_adtl = '',
-              path = '', name = '', offsets = False):
+def points_only(TOI = '', tn = '', 
+              path = '', name = '', offsets = False, singleplot = False):
     '''
     Plotting RV data points. Does not plot RV expected curve.
 
@@ -106,15 +106,14 @@ def points_only(TOI = '', tn = '', tn_adtl = '',
 
     # Create list of all file basenames:
     filenames = []
-    if tn_adtl!='': # Add any additional datasets for comparison plots
-        filenames = [tn]
-        if ', ' in tn_adtl: # Looks for multiple additional datasets
-            tn_adtl = tn_adtl.split(', ')
-            for _ in tn_adtl: 
-                filenames.append(_)
-        else: # Used if there's only one additional dataset
-            filenames.append(tn_adtl)
-    else: # Used for only one dataset
+
+    if ',' in tn: # Looks for multiple additional datasets
+        tn = tn.split(',')
+        for _ in tn: 
+            filenames.append(_)
+            if filenames[-1][0] == ' ':
+                filenames[-1] = filenames[-1][1:]
+    else:
         filenames = [tn]
 
     # Create list of exact filenames:
@@ -129,13 +128,13 @@ def points_only(TOI = '', tn = '', tn_adtl = '',
                 paths[__] = path + paths[__]
         if len(paths)==0:
             print('Error: path empty, check target name or file location\n---> Attempted path:',path,'*',str(tn),'*.csv')
-
-    # Sort alphabetically:
-    paths.sort()
     print('Using files:',paths)
 
     # Initialize plot:
-    fig, axs = plt.subplots(len(instruments),1,figsize=(8,3*len(instruments)))
+    if singleplot:
+        fig, axs = plt.subplots(1,1,figsize=(8,2*len(instruments)))
+    else:
+        fig, axs = plt.subplots(len(instruments),1,figsize=(8,3*len(instruments)))
 
     bjd_all = []
     for ff in range(len(paths)): # Loop over each dataset
@@ -144,10 +143,16 @@ def points_only(TOI = '', tn = '', tn_adtl = '',
             p = str(paths[ff])  
 
             #color 
-            if ff%2==0:
+            if 'b' in p:
                 c = 0
+                if not singleplot:
+                    ax = axs[0]
             else:
                 c = 1
+                if not singleplot:
+                    ax = axs[1]
+            if singleplot:
+                ax = axs
 
             # Read in data: 
             if c<2:
@@ -166,28 +171,34 @@ def points_only(TOI = '', tn = '', tn_adtl = '',
 
             # Create cmap, normalized to number of datasets plotted:
             if c==0:
-                cmap = cm.viridis
+                cmap = cm.Blues
             else:
-                cmap = cm.inferno
-            norm = Normalize(vmin=-1, vmax=len(paths)+1)
+                cmap = cm.Reds
+            norm = Normalize(vmin=-3, vmax=len(paths))
                     
             #Plot all data per instrument:
-            axs[c].errorbar(bjd, rv_list, yerr=erv, fmt='.', label = paths[ff], c = cmap(norm(ff)), ecolor=cmap(norm(ff))) 
-            axs[c].set_title('%s -- %s arm'%(tn, instruments[c]))
-            axs[c].set_ylabel('RV [m/s]')
-            axs[c].set_xlabel('BJD')
+            ax.errorbar(bjd, rv_list, yerr=erv, fmt='.', label = paths[ff], c = cmap(norm(ff)), ecolor=cmap(norm(ff))) 
+            if singleplot:
+                ax.set_title('%s'%(tn))
+            else:
+                ax.set_title('%s -- %s arm'%(tn, instruments[c]))
+            ax.set_ylabel('RV [m/s]')
+            ax.set_xlabel('BJD')
     bjd_range = max(bjd_all)-min(bjd_all)
-    for cc in [0,1]:
-        axs[cc].set_xlim(min(bjd_all)-0.1*bjd_range,max(bjd_all)+0.1*bjd_range)   
+    if singleplot:
+        ax.set_xlim(min(bjd_all)-0.1*bjd_range,max(bjd_all)+0.1*bjd_range)  
+        ax.legend(loc = 'upper right', fontsize = 6)
+    else:
+        for cc in [0,1]:
+            axs[cc].set_xlim(min(bjd_all)-0.1*bjd_range,max(bjd_all)+0.1*bjd_range)  
+            axs[cc].legend(loc = 'upper right', fontsize = 6) 
 
-    axs[0].legend(loc = 'upper right', fontsize = 6)
-    axs[1].legend(loc = 'upper right', fontsize = 6)
     fig.tight_layout()
     plt.show()
 
-def RV_plotter(TOI = '', others = {}, tn = '', tn_adtl ='',
+def RV_plotter(TOI = '', others = {}, tn = '', 
               path = '', name = '',
-              order = [], sigsub = True, offsets = False):
+              order = [], sigsub = True, offsets = False, singleplot = False):
     '''
     Plots phase-folded and signal-subtracted data. Uses both RV data points and expected curve.
 
@@ -218,15 +229,14 @@ def RV_plotter(TOI = '', others = {}, tn = '', tn_adtl ='',
     
     # Create list of all file basenames:
     filenames = []
-    if tn_adtl!='': # Add any additional datasets for comparison plots
-        filenames = [tn]
-        if ', ' in tn_adtl: # Looks for multiple additional datasets
-            tn_adtl = tn_adtl.split(', ')
-            for _ in tn_adtl: 
-                filenames.append(_)
-        else: # Used if there's only one additional dataset
-            filenames.append(tn_adtl)
-    else: # Used for only one dataset
+
+    if ',' in tn: # Looks for multiple additional datasets
+        tn = tn.split(',')
+        for _ in tn: 
+            filenames.append(_)
+            if filenames[-1][0] == ' ':
+                filenames[-1] = filenames[-1][1:]
+    else:
         filenames = [tn]
 
     # Create list of exact filenames:
@@ -241,8 +251,6 @@ def RV_plotter(TOI = '', others = {}, tn = '', tn_adtl ='',
                 paths[__] = path + paths[__]
         if len(paths)==0:
             print('Error: path empty, check target name or file location\n---> Attempted path:',path,'*',str(tn),'*.csv')
-    
-    paths.sort()
     print('Using files:',paths)
     
     # Load ExoFOP data:
@@ -254,7 +262,10 @@ def RV_plotter(TOI = '', others = {}, tn = '', tn_adtl ='',
         order = range(1,n_p+1) 
 
     # Initialize plot:
-    fig, axs = plt.subplots(n_p+2,len(instruments),figsize=(10,6*n_p))
+    if singleplot:
+        fig, axs = plt.subplots(n_p+2,1,figsize=(8,5*n_p))
+    else:
+        fig, axs = plt.subplots(n_p+2,len(instruments),figsize=(8,5*n_p))
 
     K = np.zeros(len(order))
     for ii in order: # Get K and expected planet mass for each planet -- 
@@ -280,11 +291,21 @@ def RV_plotter(TOI = '', others = {}, tn = '', tn_adtl ='',
             p = str(paths[ff])  
             plt_ct = 0 # reset plot counter
 
+            inst_name = ''
+
             #color 
-            if ff%2==0:
+            if 'b' in p:
                 c = 0
+                if not singleplot:
+                    ax = axs[:,0]
+                    inst_name = 'MXB arm'
             else:
                 c = 1
+                if not singleplot:
+                    ax = axs[:,1]
+                    inst_name = 'MXR arm'
+            if singleplot:
+                ax = axs[:]
 
             # Read in data: 
             if c<2:
@@ -334,16 +355,16 @@ def RV_plotter(TOI = '', others = {}, tn = '', tn_adtl ='',
 
                 # Create cmap, normalized to number of datasets plotted:
                 if c==0:
-                    cmap = cm.viridis
+                    cmap = cm.Blues
                 else:
-                    cmap = cm.inferno
-                norm = Normalize(vmin=-1, vmax=len(paths)+1)
+                    cmap = cm.Reds
+                norm = Normalize(vmin=-3, vmax=len(paths))
 
-                axs[plt_ct,c].errorbar(rx, rv_plot, yerr=erv, fmt=".", c = cmap(norm(ff)), ecolor=cmap(norm(ff)), label = paths[ff][:-6])
-                axs[plt_ct,c].plot(np.linspace(0,1,10000),K[ii-1]*np.sin(np.linspace(0,2*np.pi,10000)), color='k', linewidth=0.7)
-                axs[plt_ct,c].set_title('Phase folded %s;\n %s arm'%(title, instruments[c]))
-                axs[plt_ct,c].set_xlabel('Period = %s days' %round(params['P_p'+str(ii)],3))
-                axs[plt_ct,c].set_ylabel('RV [m/s]')
+                ax[plt_ct].errorbar(rx, rv_plot, yerr=erv, fmt=".", c = cmap(norm(ff)), ecolor=cmap(norm(ff)), label = paths[ff])
+                ax[plt_ct].plot(np.linspace(0,1,10000),K[ii-1]*np.sin(np.linspace(0,2*np.pi,10000)), color='k', linewidth=0.7)
+                ax[plt_ct].set_title('Phase folded %s %s'%(title, inst_name))
+                ax[plt_ct].set_xlabel('Period = %s days' %round(params['P_p'+str(ii)],3))
+                ax[plt_ct].set_ylabel('RV [m/s]')
 
                 plt_ct+=1
                 ct.append(ii) # track which planets have been plotted
@@ -365,36 +386,37 @@ def RV_plotter(TOI = '', others = {}, tn = '', tn_adtl ='',
                 
             # Plot all data and expected RV sine curve per instrument:
             
-            axs[plt_ct,c].errorbar(bjd, rv_list, yerr=erv, fmt='.',c = cmap(norm(ff)), ecolor=cmap(norm(ff)))
+            ax[plt_ct].errorbar(bjd, rv_list, yerr=erv, fmt='.',c = cmap(norm(ff)), ecolor=cmap(norm(ff)))
             if n_p>1:
-                axs[plt_ct,c].plot(dates,np.sum(rv,axis=0), color='k', linewidth=0.7)
+                ax[plt_ct].plot(dates,np.sum(rv,axis=0), color='k', linewidth=0.7)
             else: 
-                axs[plt_ct,c].plot(dates,rv[0], color='k', linewidth=0.7) 
-            axs[plt_ct,c].set_title('All data -- %s arm'%(instruments[c]))
-            axs[plt_ct,c].set_ylabel('RV [m/s]')
-            axs[plt_ct,c].set_xlabel('BJD')
+                ax[plt_ct].plot(dates,rv[0], color='k', linewidth=0.7) 
+            ax[plt_ct].set_title('All data %s'%(inst_name))
+            ax[plt_ct].set_ylabel('RV [m/s]')
+            ax[plt_ct].set_xlabel('BJD')
             plt_ct+=1
 
             # Plot residuals per instrument: 
             rv_rsd = rv_list - rv_exp_multisig
             sq_sum = np.sum([ii*ii for ii in rv_rsd])
             rms = np.sqrt(sq_sum/len(rv_rsd))
-            axs[plt_ct,c].errorbar(bjd, rv_rsd, yerr=erv, fmt='.', c = cmap(norm(ff)), ecolor=cmap(norm(ff)), label = 'RMS = %s'%round(rms,2))
-            axs[plt_ct,c].axhline(y=0,c='k')
-            axs[plt_ct,c].set_title('Residuals-- %s arm'%(instruments[c]))
-            axs[plt_ct,c].set_ylabel('[m/s]')
-            axs[plt_ct,c].set_xlabel('BJD')
+            ax[plt_ct].errorbar(bjd, rv_rsd, yerr=erv, fmt='.', c = cmap(norm(ff)), ecolor=cmap(norm(ff)), label = 'RMS = %s'%round(rms,2))
+            ax[plt_ct].axhline(y=0,c='k')
+            ax[plt_ct].set_title('Residuals %s'%(inst_name))
+            ax[plt_ct].set_ylabel('[m/s]')
+            ax[plt_ct].set_xlabel('BJD')
 
             plt_ct+=1
 
     bjd_range = max(bjd_all)-min(bjd_all)
-    for cc in [0,1]:
-        print(ii,cc)
-        axs[-2,cc].set_xlim(min(bjd_all)-0.1*bjd_range,max(bjd_all)+0.1*bjd_range)   
-
-    axs[0,0].legend(loc = 'upper right', fontsize=6)
-    axs[0,1].legend(loc = 'upper right', fontsize=6)
-    axs[-1,0].legend(loc = 'upper right', fontsize=6)
-    axs[-1,1].legend(loc = 'upper right', fontsize=6)
+    if singleplot:
+        ax[-2].set_xlim(min(bjd_all)-0.1*bjd_range,max(bjd_all)+0.1*bjd_range)  
+        ax[0].legend(loc = 'upper right', fontsize = 6)
+        ax[-1].legend(loc = 'upper right', fontsize = 6)
+    else:
+        for cc in [0,1]:
+            axs[-2,cc].set_xlim(min(bjd_all)-0.1*bjd_range,max(bjd_all)+0.1*bjd_range)  
+            axs[0,cc].legend(loc = 'upper right', fontsize = 6)
+            axs[-1,cc].legend(loc = 'upper right', fontsize = 6)
     fig.tight_layout()
     plt.show()
