@@ -1,0 +1,16 @@
+[project]
+name = "ExoRV"
+version = "0.0.1"
+dependencies = [
+    "numpy",
+    "matplotlib",
+    "astropy",
+    "glob",
+    "forecaster",
+    "pandas",
+    "pathlib",
+    "json",
+    "os"
+]
+
+license = {file="LICENSE"}
