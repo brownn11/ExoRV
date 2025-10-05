@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 import numpy as np
-import sys
 import pandas as pd
 from pathlib import Path
 import matplotlib.pyplot as plt
@@ -8,9 +7,9 @@ import matplotlib.cm as cm
 from matplotlib.colors import Normalize
 from forecaster import forecaster3 as mr
 import glob
+from astropy.time import Time
 plt.rcParams['lines.linewidth']=0.4
 plt.rcParams.update({'font.size': 8})
-import os
 
 import load as l
 colors = ['tab:blue','tab:red']
@@ -33,10 +32,13 @@ def curve_only(TOI = '', others = {}):
     
     # Load ExoFOP data:
     params = l.loadparams(TOI, others)
-    n_p = int((len(params)-1)/3) # number of planets
+    n_p = int((len(params)-1)/5) # number of planets
 
     # Build plot and initiate rv, K lists:
-    fig, axs = plt.subplots(n_p+1,1,figsize=(6,3*n_p))
+    if n_p > 1:
+        fig, axs = plt.subplots(n_p+1,1,figsize=(6,3*n_p))
+    else: 
+        fig, axs = plt.subplots(1,1,figsize=(6,3))
     plt_ct = 0
     rv,K=[],[]
 
@@ -58,22 +60,27 @@ def curve_only(TOI = '', others = {}):
         tpi = 2 * np.pi
         phase = 1
         Tp = params['t0_p'+str(ii)] - (phase * params['P_p'+str(ii)])  # time of periastron
-        dates = np.linspace(2460200,2460500,10000) # set random date range
+        max_P = max(params['P_p'+str(i)] for i in range(1,n_p+1))
+        dates = np.linspace(0,max_P*3,10000) # set random date range
         ma = (tpi/params['P_p'+str(ii)]) * (dates - Tp) # mean anomaly
+
         ta = np.arctan(np.tan(ma/2)) * 2 # true anomaly
         rv.append(K[-1]*np.cos(np.pi/2 + ta)) 
 
-        axs[plt_ct].plot(np.linspace(0,1,10000),K[-1]*np.sin(np.linspace(0,2*np.pi,10000)), label = 'Est. curve', color='k', linewidth=0.7)
-        axs[plt_ct].set_title('Estimated sine curve vs. real data\nPhase folded %s'%(TOI))
-        axs[plt_ct].set_xlabel('Period = %s days' %(params['P_p'+str(ii)]))
-        axs[plt_ct].set_ylabel('RV [m/s]')
-        axs[plt_ct].legend(bbox_to_anchor=(1., 1.05))
+        if n_p > 1:
+            ax = axs[plt_ct]
+        else:
+            ax = axs
+
+        ax.plot(np.linspace(0,1,10000),K[-1]*np.sin(np.linspace(0,2*np.pi,10000)), label = 'Est. curve', color='k', linewidth=0.7)
+        ax.set_title('Estimated sine curve\nPhase folded TOI-%s'%(TOI))
+        ax.set_xlabel('Period = %s days' %(params['P_p'+str(ii)]))
+        ax.set_ylabel('RV [m/s]')
+        ax.legend(bbox_to_anchor=(1., 1.05))
         plt_ct+=1
 
     if n_p>1:
         axs[-1].plot(dates, np.sum(rv,axis=0), label = 'Est. curve', color='k', linewidth=0.7)
-    else: 
-        axs[-1].plot(dates, rv[0], label = 'Est. curve', color='k', linewidth=0.7) 
 
     fig.tight_layout()
     plt.show()
@@ -81,7 +88,7 @@ def curve_only(TOI = '', others = {}):
     return K
 
 def points_only(TOI = '', tn = '', 
-              path = '', name = '', offsets = False, singleplot = False):
+              path = '', name = '', offsets = False, singleplot = True, subfmt = 'date'):
     '''
     Plotting RV data points. Does not plot RV expected curve.
 
@@ -143,7 +150,7 @@ def points_only(TOI = '', tn = '',
             p = str(paths[ff])  
 
             #color 
-            if 'b' in p:
+            if '_b.' in p:
                 c = 0
                 if not singleplot:
                     ax = axs[0]
@@ -185,20 +192,25 @@ def points_only(TOI = '', tn = '',
             ax.set_ylabel('RV [m/s]')
             ax.set_xlabel('BJD')
     bjd_range = max(bjd_all)-min(bjd_all)
+    xticks_times = np.linspace(min(bjd_all),max(bjd_all), 10)
     if singleplot:
         ax.set_xlim(min(bjd_all)-0.1*bjd_range,max(bjd_all)+0.1*bjd_range)  
         ax.legend(loc = 'upper right', fontsize = 6)
+        ax.set_xticks(xticks_times, labels=Time(xticks_times,format='jd').to_value('iso', subfmt = subfmt),rotation = 30)
     else:
         for cc in [0,1]:
             axs[cc].set_xlim(min(bjd_all)-0.1*bjd_range,max(bjd_all)+0.1*bjd_range)  
             axs[cc].legend(loc = 'upper right', fontsize = 6) 
+            axs[cc].set_xticks(xticks_times, labels=Time(xticks_times,format='jd').to_value('iso', subfmt = subfmt),rotation = 30)
+
+    
 
     fig.tight_layout()
     plt.show()
 
 def RV_plotter(TOI = '', others = {}, tn = '', 
               path = '', name = '',
-              order = [], sigsub = True, offsets = False, singleplot = False):
+              order = [], sigsub = True, offsets = False, singleplot = True, MXdrift = True, subfmt = 'date'):
     '''
     Plots phase-folded and signal-subtracted data. Uses both RV data points and expected curve.
 
@@ -243,6 +255,7 @@ def RV_plotter(TOI = '', others = {}, tn = '',
     paths = []
     for nn in filenames:
         if len(name)==0:
+            print()
             paths.append(glob.glob(path+'*'+str(nn)+'_r.csv')[0])
             paths.append(glob.glob(path+'*'+str(nn)+'_b.csv')[0])
         else:
@@ -255,7 +268,7 @@ def RV_plotter(TOI = '', others = {}, tn = '',
     
     # Load ExoFOP data:
     params = l.loadparams(TOI, others)
-    n_p = int((len(params)-1)/3) # number of planets
+    n_p = int((len(params)-1)/5) # number of planets
 
     # Automate order if unspecified:
     if order == []:
@@ -268,6 +281,7 @@ def RV_plotter(TOI = '', others = {}, tn = '',
         fig, axs = plt.subplots(n_p+2,len(instruments),figsize=(8,5*n_p))
 
     K = np.zeros(len(order))
+
     for ii in order: # Get K and expected planet mass for each planet -- 
         print('\nPlanet %s (%sd):'%(ii,params['P_p'+str(ii)]))
         
@@ -279,7 +293,7 @@ def RV_plotter(TOI = '', others = {}, tn = '',
             print(f'Planet mass estimated at {m:.2f} +{m_plus:.2f} -{m_min:.2f} Earth mass')
 
         # Calculate RV amplitude:
-        K[ii-1] = (28.4 * (m/317.83) * ((365.25/params['P_p'+str(ii)])**(1/3)) * ((params['m_s'])**(-2/3))) # 28.4 [m/s] = 2piG^1/3; 317.83 = MJ/ME; 365.25 = Yr/day
+        K[ii-1] = (28.4 * (m/317.83) * ((365.25/params['P_p'+str(ii)])**(1/3)) * ((params['m_s'])**(-2/3)) * (1/np.sqrt(1-(params['e_p'+str(ii)]*params['e_p'+str(ii)])))) # 28.4 [m/s] = 2piG^1/3; 317.83 = MJ/ME; 365.25 = Yr/day
         print(f'Calculated RV semi-amplitude of {K[-1]:.2f} m s-1')
 
     bjd_all = [] # compile ALL bjd dates to find absolute minimum and maximum of all datasets
@@ -294,7 +308,7 @@ def RV_plotter(TOI = '', others = {}, tn = '',
             inst_name = ''
 
             #color 
-            if 'b' in p:
+            if '_b.' in p:
                 c = 0
                 if not singleplot:
                     ax = axs[:,0]
@@ -316,6 +330,7 @@ def RV_plotter(TOI = '', others = {}, tn = '',
             bjd=np.array(rv_csv['bjd'].values[:])
             bjd_all = np.concatenate([bjd_all,bjd])
             erv=np.array(rv_csv['e_rv'].values[:])  
+            dates = np.linspace(min(bjd)-100,max(bjd)+100,10000) # set desired date range
             
             # Add MAROON-X offsets:
             if offsets:
@@ -325,8 +340,18 @@ def RV_plotter(TOI = '', others = {}, tn = '',
             # Initialize dummy arrays for signal subtraction:
             if sigsub == True:
                 rv_sub = rv_list
-
             rv_exp_multisig = 0 # expected RV, does not reset per signal
+
+            # Implement etalon drift of 2.2 cm/s/day
+            if MXdrift:
+                ndays = (max(bjd)+100) - (min(bjd)-100)
+                dy = 0.022 * ndays # 2.2 cm/s * n_days
+                rv.append(0.022*(dates - min(dates)) - (dy/2))
+
+                ndays = max(bjd) - min(bjd)
+                dy = 0.022 * ndays # 2.2 cm/s * n_days
+                rv_exp_multisig = 0.022*(bjd - min(bjd)) - (dy/2)
+
             for ii in order: # Iterate over expected planets:
                 rv_exp_onesig = [] # expected RV, resets per signal
 
@@ -334,10 +359,18 @@ def RV_plotter(TOI = '', others = {}, tn = '',
                 tpi = 2 * np.pi
                 phase = 1
                 Tp = params['t0_p'+str(ii)] - (phase * params['P_p'+str(ii)])  # time of periastron
-                dates = np.linspace(min(bjd)-100,max(bjd)+100,10000) # set desired date range
                 ma = (tpi/params['P_p'+str(ii)]) * (dates - Tp) # mean anomaly
-                ta = np.arctan(np.tan(ma/2)) * 2 # true anomaly
-                rv.append(K[ii-1]*np.cos(np.pi/2 + ta)) # expected rv signal
+                if params['e_p'+str(ii)]!=0:
+                    e = params['e_p'+str(ii)]
+                    w_rad = params['w_p'+str(ii)]*tpi/360
+                    ea = ma
+                    for __ in range(20): # Just assuming this will be enough iterations... 
+                        ea = ma + e*np.sin(ea) # eccentric anomaly 
+                    ta = 2 * np.arctan(np.sqrt((1+e)/(1-e)) * np.tan(ea/2)) # true anomaly for an elliptic orbit
+                    rv.append(K[ii-1]*(np.cos(w_rad + ta) + e*np.cos(w_rad)))
+                else:
+                    ta = np.arctan(np.tan(ma/2)) * 2 # true anomaly for a circular orbit
+                    rv.append(K[ii-1]*np.cos(np.pi/2 + ta)) # expected rv signal
 
                 # Plot data per planet as phase-fold:
                 rx = ((params['t0_p'+str(ii)]-bjd)/params['P_p'+str(ii)])%1 
@@ -372,8 +405,17 @@ def RV_plotter(TOI = '', others = {}, tn = '',
                 if sigsub == True:
                     # Signal subtract: 
                     ma = (tpi/params['P_p'+str(ii)]) * (bjd - Tp) 
-                    ta = np.arctan(np.tan(ma/2)) * 2 # true anomaly
-                    rv_exp_onesig = (K[ii-1]*np.cos(np.pi/2 + ta)) 
+                    if params['e_p'+str(ii)]!=0:
+                        e = params['e_p'+str(ii)]
+                        w_rad = params['w_p'+str(ii)]*tpi/360
+                        ea = ma
+                        for __ in range(20): # Just assuming this will be enough iterations... 
+                            ea = ma + e*np.sin(ea) # eccentric anomaly 
+                        ta = 2 * np.arctan(np.sqrt((1+e)/(1-e)) * np.tan(ea/2)) # true anomaly for an elliptic orbit
+                        rv_exp_onesig = (K[ii-1]*(np.cos(w_rad + ta) + e*np.cos(w_rad)))
+                    else:
+                        ta = np.arctan(np.tan(ma/2)) * 2 # true anomaly for a circular orbit
+                        rv_exp_onesig = (K[ii-1]*np.cos(np.pi/2 + ta)) 
                     rv_exp_multisig += rv_exp_onesig
 
                     rv_sub = rv_list - rv_exp_onesig
@@ -381,19 +423,30 @@ def RV_plotter(TOI = '', others = {}, tn = '',
                 else:
                     # Still get residuals:
                     ma = (tpi/params['P_p'+str(ii)]) * (bjd - Tp) 
-                    ta = np.arctan(np.tan(ma/2)) * 2 # true anomaly
-                    rv_exp_multisig += (K[ii-1]*np.cos(np.pi/2 + ta))
+                    if params['e_p'+str(ii)]!=0:
+                        e = params['e_p'+str(ii)]
+                        w_rad = params['w_p'+str(ii)]*tpi/360
+                        ea = ma
+                        for __ in range(20): # Just assuming this will be enough iterations... 
+                            ea = ma + e*np.sin(ea) # eccentric anomaly 
+                        ta = 2 * np.arctan(np.sqrt((1+e)/(1-e)) * np.tan(ea/2)) # true anomaly for an elliptic orbit
+                        rv_exp_multisig += (K[ii-1]*(np.cos(w_rad + ta) + e*np.cos(w_rad)))
+                    else:
+                        ta = np.arctan(np.tan(ma/2)) * 2 # true anomaly for a circular orbit
+                        rv_exp_multisig += (K[ii-1]*np.cos(np.pi/2 + ta))
                 
+            xticks_times = np.linspace(min(bjd_all),max(bjd_all), 10)
+
             # Plot all data and expected RV sine curve per instrument:
-            
             ax[plt_ct].errorbar(bjd, rv_list, yerr=erv, fmt='.',c = cmap(norm(ff)), ecolor=cmap(norm(ff)))
-            if n_p>1:
+            if n_p>1 or MXdrift:
                 ax[plt_ct].plot(dates,np.sum(rv,axis=0), color='k', linewidth=0.7)
             else: 
                 ax[plt_ct].plot(dates,rv[0], color='k', linewidth=0.7) 
             ax[plt_ct].set_title('All data %s'%(inst_name))
             ax[plt_ct].set_ylabel('RV [m/s]')
             ax[plt_ct].set_xlabel('BJD')
+            ax[plt_ct].set_xticks(xticks_times, labels=Time(xticks_times,format='jd').to_value('iso', subfmt = subfmt),rotation = 30)
             plt_ct+=1
 
             # Plot residuals per instrument: 
@@ -405,6 +458,7 @@ def RV_plotter(TOI = '', others = {}, tn = '',
             ax[plt_ct].set_title('Residuals %s'%(inst_name))
             ax[plt_ct].set_ylabel('[m/s]')
             ax[plt_ct].set_xlabel('BJD')
+            ax[plt_ct].set_xticks(xticks_times, labels=Time(xticks_times,format='jd').to_value('iso', subfmt = subfmt),rotation = 30)
 
             plt_ct+=1
 
@@ -415,8 +469,10 @@ def RV_plotter(TOI = '', others = {}, tn = '',
         ax[-1].legend(loc = 'upper right', fontsize = 6)
     else:
         for cc in [0,1]:
-            axs[-2,cc].set_xlim(min(bjd_all)-0.1*bjd_range,max(bjd_all)+0.1*bjd_range)  
-            axs[0,cc].legend(loc = 'upper right', fontsize = 6)
-            axs[-1,cc].legend(loc = 'upper right', fontsize = 6)
+            ax[-2,cc].set_xlim(min(bjd_all)-0.1*bjd_range,max(bjd_all)+0.1*bjd_range)  
+            ax[0,cc].legend(loc = 'upper right', fontsize = 6)
+            ax[-1,cc].legend(loc = 'upper right', fontsize = 6)
+    
+
     fig.tight_layout()
     plt.show()
