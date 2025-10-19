@@ -6,7 +6,6 @@ dependencies = [
     "matplotlib",
     "astropy",
     "glob",
-    "forecaster",
     "pandas",
     "pathlib",
     "json",
