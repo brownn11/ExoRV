@@ -7,8 +7,6 @@ dependencies = [
     "astropy",
     "pandas",
     "pathlib",
-    "json",
-    "os"
 ]
 
 license = {file="LICENSE"}
