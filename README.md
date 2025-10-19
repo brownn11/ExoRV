@@ -7,6 +7,7 @@ Plot:
   2. Expected RV curve
   3. Both: RV data against an expected curve
 
+Capabilities:
 - Easily download planet parameters from ExoFOP
 - Use Chen & Kipping (2016) to calculate an expected mass based on a transiting planet radius -- or input your own mass value
 - Calculate the RMS of data points against the expected curve
