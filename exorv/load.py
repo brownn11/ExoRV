@@ -5,14 +5,13 @@ import pandas as pd
 from pathlib import Path
 import matplotlib.pyplot as plt
 from forecaster import forecaster3 as mr
-import glob
 plt.rcParams['lines.linewidth']=0.4
 plt.rcParams.update({'font.size': 8})
 import os
 
 def MX_offsets(rv_list,bjd,c):
     '''
-    Apply offsets as calculated by Ritvik Basant.
+    Apply offsets as calculated in Basant et al. (2025).
 
     Args:
         rv_list (array): array of RV data points
@@ -24,91 +23,91 @@ def MX_offsets(rv_list,bjd,c):
             ll = np.where(bjd == dd)
             # 09/2020: 
             if 2458900<dd<2459149:
-                if c==1: # red
-                    rv_list[ll]+=13.28
-                elif c==0: # blue
-                    rv_list[ll]+=10.94
+                if c==0: # red
+                    rv_list[ll]+=12.08
+                elif c==1: # blue
+                    rv_list[ll]+=10.71
             # 11/2020: 
             elif 2459150<dd<2459240:
-                if c==1:  
-                    rv_list[ll]+=10.4
-                elif c==0: 
-                    rv_list[ll]+=9.09  
+                if c==0:  
+                    rv_list[ll]+=8.56
+                elif c==1: 
+                    rv_list[ll]+=8.68  
             # 02/2021: 
             elif 2459246<dd<2459300: 
-                if c==1:  
-                    rv_list[ll]+=16.08
-                elif c==0: 
-                    rv_list[ll]+=12.92
+                if c==0:  
+                    rv_list[ll]+=10.2
+                elif c==1: 
+                    rv_list[ll]+=9.38
             # 04/2021: 
             elif 2459305<dd<2459335: 
-                if c==1:  
-                    rv_list[ll]+=8.92 
-                elif c==0: 
-                    rv_list[ll]+=7.4 
+                if c==0:  
+                    rv_list[ll]+=8.44 
+                elif c==1: 
+                    rv_list[ll]+=7.27 
             # 05/2021: 
             elif 2459350<dd<2459380: 
-                if c==1:  
-                    rv_list[ll]+= 7.4 
-                elif c==0: 
-                    rv_list[ll]+= 6.5 
+                if c==0:  
+                    rv_list[ll]+= 6.74 
+                elif c==1: 
+                    rv_list[ll]+= 6.04 
             # 08/2021: 
             elif 2459430<dd<2459460: 
-                if c==1:  
-                    rv_list[ll]+=4.61 
-                elif c==0: 
-                    rv_list[ll]+=3.47 
+                if c==0:  
+                    rv_list[ll]+=3.98 
+                elif c==1: 
+                    rv_list[ll]+=3.04 
             # 10/2021: 
             elif 2459510<dd<2459550: 
-                if c==1:  
-                    rv_list[ll]+=3.2 
-                elif c==0: 
-                    rv_list[ll]+=1.61 
+                if c==0:  
+                    rv_list[ll]+=1.96 
+                elif c==1: 
+                    rv_list[ll]+=1.17 
             # 03/2022: 
             elif 2459655<dd<2459700:
-                if c==1:  
-                    rv_list[ll]-=1.28 
-                elif c==0: 
-                    rv_list[ll]-=2.53 
+                if c==0:  
+                    rv_list[ll]-=1.94 
+                elif c==1: 
+                    rv_list[ll]-=1.95 
             # 05/2022: 
             elif 2459720<dd<2459750:
-                if c==1:  
-                    rv_list[ll]-= 2.67 
-                elif c==0: 
-                    rv_list[ll]-= 1.29 
+                if c==0:  
+                    rv_list[ll]-= 2.95 
+                elif c==1: 
+                    rv_list[ll]-= 1.67 
             # 07/2022: 
             elif 2459765<dd<2459810:
-                if c==1:  
-                    rv_list[ll]-=3.74 
-                elif c==0: 
-                    rv_list[ll]-=2.43 
+                if c==0:  
+                    rv_list[ll]-=4.56 
+                elif c==1: 
+                    rv_list[ll]-=2.57 
             # 06/2023: 
             elif 2460115<dd<2460165: 
-                if c==1:  
-                    rv_list[ll]-=4.08 
-                elif c==0: 
-                    rv_list[ll]-=2.48 
+                if c==0:  
+                    rv_list[ll]-=4.33 
+                elif c==1: 
+                    rv_list[ll]-=2.73 
             # 10/2023: 
             elif 2460218<dd<2460248: 
-                if c==1:  
-                    rv_list[ll]-=11.98
-                elif c==0: 
-                    rv_list[ll]-=10.83
+                if c==0:  
+                    rv_list[ll]-=12.29
+                elif c==1: 
+                    rv_list[ll]-=10.52
             # 11/2023: 
             elif 2460250<dd<2460279: 
-                if c==1:  
-                    rv_list[ll]-=12.02
-                elif c==0: 
-                    rv_list[ll]-=11.11
+                if c==0:  
+                    rv_list[ll]-=13.21
+                elif c==1: 
+                    rv_list[ll]-=10.96
             # 12/2023: 
             elif 2460280<dd<2460320: 
-                if c==1:  
-                    rv_list[ll]-=12.32
-                elif c==0: 
-                    rv_list[ll]-=11.7
+                if c==0:  
+                    rv_list[ll]-=13.62
+                elif c==1: 
+                    rv_list[ll]-=11.15
             else:
                 print('error: date %s out of range'%dd) 
-    return rv_list    
+    return rv_list     
 
 def loadparams(TOI = '', others={}):
     '''
@@ -139,6 +138,8 @@ def loadparams(TOI = '', others={}):
                 params['t0_p'+str(n)] = exofop_p['Epoch (BJD)']
                 params['r_p'+str(n)] = exofop_p['Planet Radius (R_Earth)'] # ExoFOP doesn't list planet masses -- even confirmed masses :(
                 params['m_s'] = exofop_p['Stellar Mass (M_Sun)'] # rewrites stellar mass for each planet -- probably not very efficient, but it works!
+                params['e_p'+str(n)] = 0
+                params['w_p'+str(n)] = 90
                 n += 1
             except:
                 print(f'Loaded {n-1} planet(s).')
@@ -164,12 +165,26 @@ def loadparams(TOI = '', others={}):
             try:
                 if params['m_p'+str(nn)] and params['r_p'+str(nn)]: 
                     del params['r_p'+str(nn)]
-                    n += 1
             except:
                 pass
+
+        # Add eccentricity and/or omega if not provided:
+        for nn in range(n):
+            nn+=1
+            try:
+                if params['e_p'+str(nn)]:
+                    pass
+            except:
+                params['e_p'+str(nn)] = 0
+            try:
+                if params['w_p'+str(nn)]:
+                    pass
+            except:
+                params['w_p'+str(nn)] = 0
+
             
-    if (len(params.keys())-1)%3 != 0:
-        print("Missing parameter in dictionary 'params'. Requires: P [d], epoch [BJD], r [r_E] OR m [m_E], and m_s [m_S]. \n Please review:",params)
+    if (len(params.keys())-1)%5 != 0:
+        print("Missing parameter in dictionary 'params'. Requires: P [d], epoch [BJD], r [r_E] OR m [m_E], e, w, and m_s [m_S]. \n Please review:",params)
         sys.exit()
             
     print('Usings params:',params)
