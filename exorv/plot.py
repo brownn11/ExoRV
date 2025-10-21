@@ -345,12 +345,12 @@ def RV_plotter(TOI = '', others = {}, tn = '',
             # Implement etalon drift of 2.2 cm/s/day
             if MXdrift:
                 ndays = (max(bjd)+100) - (min(bjd)-100)
-                dy = 0.022 * ndays # 2.2 cm/s * n_days
-                rv.append(0.022*(dates - min(dates)) - (dy/2))
+                dy = 0.02 * ndays # 2.2 cm/s * n_days
+                rv.append(0.02*(dates - min(dates)) - (dy/2))
 
                 ndays = max(bjd) - min(bjd)
-                dy = 0.022 * ndays # 2.2 cm/s * n_days
-                rv_exp_multisig = 0.022*(bjd - min(bjd)) - (dy/2)
+                dy = 0.02 * ndays # 2.2 cm/s * n_days
+                rv_exp_multisig = 0.02*(bjd - min(bjd)) - (dy/2)
 
             for ii in order: # Iterate over expected planets:
                 rv_exp_onesig = [] # expected RV, resets per signal
