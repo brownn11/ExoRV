@@ -5,12 +5,8 @@ dependencies = [
     "numpy",
     "matplotlib",
     "astropy",
-    "glob",
-    "forecaster",
     "pandas",
     "pathlib",
-    "json",
-    "os"
 ]
 
 license = {file="LICENSE"}

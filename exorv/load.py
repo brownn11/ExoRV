@@ -208,8 +208,6 @@ def loaddata_mx(TOI = '', tn = '', servalfolder = ''):
     os.system('scp "%s:%s" "%s"' % (remotehost, remotefile_b, localfile_b) )
 
 def loaddata(path = ''):
-    # set tn if TOI target is used -- simplifies things a bit:
-
     remotehost = input('Remote host: ')
     localfile = './'+path.split('/')[-1]
 
